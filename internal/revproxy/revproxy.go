@@ -38,6 +38,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq.URL.Scheme = rp.upstream.Scheme
 	outReq.URL.Host = rp.upstream.Host
 	outReq.URL.Path = joinPaths(rp.upstream.Path, r.URL.Path)
+	outReq.URL.RawPath = "" // TODO: preserve %2F by joining EscapedPath() too.
 
 	deleteHopByHopHeaders(outReq.Header)
 	setForwardedHeaders(r, outReq)
