@@ -3,6 +3,7 @@ package revproxy
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
@@ -12,6 +13,7 @@ import (
 type RevProxy struct {
 	upstream  *url.URL
 	transport http.RoundTripper
+	logger    *slog.Logger
 }
 
 func New(rawUpstream string) (*RevProxy, error) {
@@ -25,7 +27,7 @@ func New(rawUpstream string) (*RevProxy, error) {
 	if u.Host == "" {
 		return nil, fmt.Errorf("upstream must include a host")
 	}
-	rp := &RevProxy{upstream: u, transport: http.DefaultTransport}
+	rp := &RevProxy{upstream: u, transport: http.DefaultTransport, logger: slog.Default()}
 	return rp, nil
 }
 
@@ -49,7 +51,16 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	copyHeader(w.Header(), resp.Header)
 	deleteHopByHopHeaders(w.Header())
 	w.WriteHeader(resp.StatusCode)
-	io.Copy(w, resp.Body)
+
+	bytes, err := io.Copy(w, resp.Body)
+	if err != nil {
+		rp.logger.WarnContext(r.Context(), "response body copy failed",
+			"err", err,
+			"bytes_written", bytes,
+			"path", r.URL.Path,
+			"upstream", rp.upstream.Host,
+		)
+	}
 }
 
 var hopByHopHeaders = []string{
