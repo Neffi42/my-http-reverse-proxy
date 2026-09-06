@@ -34,6 +34,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq.RequestURI = ""
 	outReq.URL.Scheme = rp.upstream.Scheme
 	outReq.URL.Host = rp.upstream.Host
+	outReq.URL.Path = joinPaths(rp.upstream.Path, r.URL.Path)
 
 	deleteHopByHopHeaders(outReq.Header)
 	setForwardedHeaders(r, outReq)
@@ -110,4 +111,13 @@ func setForwardedHeaders(inReq, outReq *http.Request) {
 	}
 
 	outReq.Header.Set(xForwardedHost, inReq.Host)
+}
+
+func joinPaths(base, req string) string {
+	if base == "" || base == "/" {
+		return req
+	} else if req == "" || req == "/" {
+		return base
+	}
+	return strings.TrimSuffix(base, "/") + "/" + strings.TrimPrefix(req, "/")
 }
