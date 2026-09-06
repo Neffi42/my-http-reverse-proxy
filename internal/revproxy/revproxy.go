@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 )
 
 type RevProxy struct {
@@ -33,6 +34,8 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq.URL.Scheme = rp.upstream.Scheme
 	outReq.URL.Host = rp.upstream.Host
 
+	deleteHopByHopHeaders(outReq.Header)
+
 	resp, err := rp.transport.RoundTrip(outReq)
 	if err != nil {
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
@@ -44,6 +47,35 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			w.Header().Add(k, v)
 		}
 	}
+	deleteHopByHopHeaders(outReq.Header)
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
+}
+
+var hopByHopHeaders = []string{
+	"Connection",
+	"Proxy-Connection",
+	"Proxy-Authenticate",
+	"Proxy-Authorization",
+	"Keep-Alive",
+	"Te",
+	"Trailer",
+	"Transfer-Encoding",
+	"Upgrade",
+}
+
+func deleteHopByHopHeaders(h http.Header) {
+	for _, v := range h.Values("Connection") {
+		for _, key := range strings.Split(v, ",") {
+			key = strings.TrimSpace(key)
+			if key != "" {
+				h.Del(key)
+			}
+
+		}
+	}
+
+	for _, key := range hopByHopHeaders {
+		h.Del(key)
+	}
 }
