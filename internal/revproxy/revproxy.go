@@ -3,6 +3,7 @@ package revproxy
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -35,6 +36,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq.URL.Host = rp.upstream.Host
 
 	deleteHopByHopHeaders(outReq.Header)
+	setForwardedHeaders(r, outReq)
 
 	resp, err := rp.transport.RoundTrip(outReq)
 	if err != nil {
@@ -83,4 +85,29 @@ func copyHeader(src, dest http.Header) {
 			dest.Add(key, val)
 		}
 	}
+}
+
+func setForwardedHeaders(inReq, outReq *http.Request) {
+	xForwardedFor := "X-Forwarded-For"
+	xForwardedProto := "X-Forwarded-Proto"
+	xForwardedHost := "X-Forwarded-Host"
+
+	ip, _, err := net.SplitHostPort(inReq.RemoteAddr)
+	if err != nil {
+		previousProxies := inReq.Header[xForwardedFor]
+		if len(previousProxies) > 0 {
+			ip = strings.Join(previousProxies, ", ") + ", " + ip
+		}
+		outReq.Header.Set(xForwardedFor, ip)
+	} else {
+		outReq.Header.Del(xForwardedFor)
+	}
+
+	if inReq.TLS == nil {
+		outReq.Header.Set(xForwardedProto, "http")
+	} else {
+		outReq.Header.Set(xForwardedProto, "https")
+	}
+
+	outReq.Header.Set(xForwardedHost, inReq.Host)
 }
