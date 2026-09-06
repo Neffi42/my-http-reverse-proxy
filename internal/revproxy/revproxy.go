@@ -39,6 +39,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := rp.transport.RoundTrip(outReq)
 	if err != nil {
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
+		return
 	}
 	defer resp.Body.Close()
 
