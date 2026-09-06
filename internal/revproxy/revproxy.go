@@ -129,7 +129,7 @@ func joinPaths(base, req string) string {
 	if base == "" || base == "/" {
 		return req
 	} else if req == "" || req == "/" {
-		return base
+		return strings.TrimSuffix(base, "/") + "/"
 	}
 	return strings.TrimSuffix(base, "/") + "/" + strings.TrimPrefix(req, "/")
 }
