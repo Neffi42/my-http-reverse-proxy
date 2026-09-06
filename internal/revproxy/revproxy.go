@@ -94,7 +94,7 @@ func setForwardedHeaders(inReq, outReq *http.Request) {
 	xForwardedHost := "X-Forwarded-Host"
 
 	ip, _, err := net.SplitHostPort(inReq.RemoteAddr)
-	if err != nil {
+	if err == nil {
 		previousProxies := inReq.Header[xForwardedFor]
 		if len(previousProxies) > 0 {
 			ip = strings.Join(previousProxies, ", ") + ", " + ip
