@@ -10,14 +10,14 @@ import (
 
 func main() {
 	listen := flag.String("listen", ":8000", "address to listen on")
-	origin := flag.String("origin", "http://127.0.0.1:9000", "address origin is listening on")
+	upstream := flag.String("upstream", "http://127.0.0.1:9000", "address upstream is listening on")
 	flag.Parse()
 
-	rp, err := revproxy.New(*origin)
+	rp, err := revproxy.New(*upstream)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Printf("proxy on %s -> %s\n", *listen, *origin)
+	log.Printf("proxy on %s -> %s\n", *listen, *upstream)
 	log.Fatal(http.ListenAndServe(*listen, rp))
 }
