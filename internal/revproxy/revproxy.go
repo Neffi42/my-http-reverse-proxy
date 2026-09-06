@@ -47,7 +47,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	copyHeader(w.Header(), resp.Header)
-	deleteHopByHopHeaders(outReq.Header)
+	deleteHopByHopHeaders(w.Header())
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, resp.Body)
 }
