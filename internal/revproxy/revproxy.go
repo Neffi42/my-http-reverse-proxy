@@ -34,6 +34,7 @@ func New(rawUpstream string) (*RevProxy, error) {
 func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq := r.Clone(r.Context())
 	outReq.RequestURI = ""
+	outReq.Host = rp.upstream.Host
 	outReq.URL.Scheme = rp.upstream.Scheme
 	outReq.URL.Host = rp.upstream.Host
 	outReq.URL.Path = joinPaths(rp.upstream.Path, r.URL.Path)
