@@ -59,7 +59,7 @@ func New(next http.Handler, store *Store, ttl time.Duration, logger *slog.Logger
 
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cc := parseCacheControl(r.Header.Get("Cache-Control"))
-	if r.Method != http.MethodGet || cc.NoStore {
+	if r.Method != http.MethodGet || cc.NoStore || r.Header.Get("Cookie") != "" {
 		w.Header().Set("X-Cache", "BYPASS")
 		m.next.ServeHTTP(w, r)
 		return
@@ -79,7 +79,7 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if rec.status == http.StatusOK {
 		cc := parseCacheControl(rec.Header().Get("Cache-Control"))
-		if cc.Private || cc.NoStore {
+		if cc.Private || cc.NoStore || rec.Header().Get("Set-Cookie") != "" || rec.Header().Get("Vary") != "" {
 			return
 		}
 
