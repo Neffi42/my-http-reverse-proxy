@@ -16,7 +16,7 @@ type RevProxy struct {
 	logger    *slog.Logger
 }
 
-func New(rawUpstream string) (*RevProxy, error) {
+func New(rawUpstream string, transport http.RoundTripper, logger *slog.Logger) (*RevProxy, error) {
 	u, err := url.Parse(rawUpstream)
 	if err != nil {
 		return nil, fmt.Errorf("parse upstream: %w", err)
@@ -27,7 +27,13 @@ func New(rawUpstream string) (*RevProxy, error) {
 	if u.Host == "" {
 		return nil, fmt.Errorf("upstream must include a host")
 	}
-	rp := &RevProxy{upstream: u, transport: http.DefaultTransport, logger: slog.Default()}
+	if transport == nil {
+		transport = http.DefaultTransport
+	}
+	if logger == nil {
+		logger = slog.Default()
+	}
+	rp := &RevProxy{upstream: u, transport: transport, logger: logger}
 	return rp, nil
 }
 
