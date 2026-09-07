@@ -112,3 +112,4 @@ Since this is just a practice project, I left a few things out:
 - The Store never actually evicts expired entries, so it will have unbounded memory growth over a long uptime.
 - I used http.ListenAndServe directly, which means there are no timeouts or graceful shutdowns configured.
 - It only caches GET requests, there is no cap on the cache size, and the TTL is fixed per process rather than per-route.
+- I left a TODO in the proxy code to properly preserve escaped slashes (`%2F`) by joining `EscapedPath()` too.
