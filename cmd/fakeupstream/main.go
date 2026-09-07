@@ -1,23 +1,31 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 )
 
 type Counter struct {
+	mu    sync.Mutex
 	count int
 }
 
-func hello(w http.ResponseWriter, req *http.Request) {
-	fmt.Fprintf(w, "hello\n")
+func hello(port uint) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(w, "hello from port %d\n", port)
+	}
 }
 
 func (c *Counter) counter(w http.ResponseWriter, req *http.Request) {
+	c.mu.Lock()
 	c.count++
-	fmt.Fprintf(w, "count is: %d\n", c.count)
+	n := c.count
+	c.mu.Unlock()
+	fmt.Fprintf(w, "count is: %d\n", n)
 }
 
 func headers(w http.ResponseWriter, req *http.Request) {
@@ -29,15 +37,29 @@ func headers(w http.ResponseWriter, req *http.Request) {
 }
 
 func main() {
-	listen := flag.String("listen", ":9000", "address to listen on")
+	defaultPort := flag.Uint("port", 9000, "port to listen on")
+	replicas := flag.Uint("replicas", 3, "number of backends to run")
 	flag.Parse()
 
-	c := Counter{}
+	var wg sync.WaitGroup
 
-	http.HandleFunc("/hello", hello)
-	http.HandleFunc("/headers", headers)
-	http.HandleFunc("/counter", c.counter)
+	for i := range *replicas {
+		port := *defaultPort + i
+		addr := fmt.Sprintf(":%d", port)
+		c := &Counter{}
 
-	log.Printf("origin listening on %s", *listen)
-	log.Fatal(http.ListenAndServe(*listen, nil))
+		mux := http.NewServeMux()
+		mux.HandleFunc("/hello", hello(port))
+		mux.HandleFunc("/headers", headers)
+		mux.HandleFunc("/counter", c.counter)
+
+		wg.Go(func() {
+			log.Printf("listening on %s", addr)
+			if err := http.ListenAndServe(addr, mux); !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("server %s: %v", addr, err)
+			}
+		})
+	}
+
+	wg.Wait()
 }
