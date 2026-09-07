@@ -18,6 +18,9 @@ func New(next http.Handler, store *Store, ttl time.Duration, logger *slog.Logger
 	if logger == nil {
 		logger = slog.Default()
 	}
+	if store == nil {
+		store = NewStore()
+	}
 	m := &Middleware{next: next, store: store, ttl: ttl, logger: logger}
 	return m
 }
