@@ -16,6 +16,7 @@ I took reference from:
 - Routes requests to different upstream backends by URL path prefix (e.g. `/api/` -> one backend, `/private/` -> another, `/` -> default).
 - Forwards `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` and strips hop-by-hop headers in and out.
 - Caches GET responses in memory for a fixed TTL, adding an `X-Cache` header (`MISS` / `HIT` / `BYPASS`) and an `Age` header on hits.
+- Respects `Cache-Control: private` and `no-store` directives (from both client and server) to bypass the cache for sensitive data.
 
 ## Project Structure
 
@@ -107,7 +108,7 @@ Finally, if you wait past the 5-second TTL and make the original request again, 
 
 Since this is just a practice project, I left a few things out:
 
-- It ignores Cache-Control (no-store/private), Vary, and Set-Cookie on cached responses.
+- It ignores some `Cache-Control` directives, `Vary`, and `Set-Cookie` on cached responses.
 - The Store never actually evicts expired entries, so it will have unbounded memory growth over a long uptime.
 - I used http.ListenAndServe directly, which means there are no timeouts or graceful shutdowns configured.
 - It only caches GET requests, there is no cap on the cache size, and the TTL is fixed per process rather than per-route.

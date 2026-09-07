@@ -4,8 +4,40 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
+
+type CacheControl struct {
+	Private bool
+	NoStore bool
+}
+
+func parseCacheControl(header string) CacheControl {
+	cc := CacheControl{}
+	if header == "" {
+		return cc
+	}
+
+	for _, part := range strings.Split(header, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		kv := strings.SplitN(part, "=", 2)
+		key := strings.ToLower(strings.TrimSpace(kv[0]))
+
+		switch key {
+		case "no-store":
+			cc.NoStore = true
+		case "private":
+			cc.Private = true
+		}
+	}
+
+	return cc
+}
 
 type Middleware struct {
 	next   http.Handler
@@ -26,7 +58,8 @@ func New(next http.Handler, store *Store, ttl time.Duration, logger *slog.Logger
 }
 
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	cc := parseCacheControl(r.Header.Get("Cache-Control"))
+	if r.Method != http.MethodGet || cc.NoStore {
 		w.Header().Set("X-Cache", "BYPASS")
 		m.next.ServeHTTP(w, r)
 		return
@@ -45,6 +78,11 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	m.next.ServeHTTP(rec, r)
 
 	if rec.status == http.StatusOK {
+		cc := parseCacheControl(rec.Header().Get("Cache-Control"))
+		if cc.Private || cc.NoStore {
+			return
+		}
+
 		hdr := rec.Header().Clone()
 		hdr.Del("X-Cache")
 		m.store.Set(k, &Entry{
