@@ -2,9 +2,12 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"net/http"
+	"os"
+	"time"
 
+	"github.com/Neffi42/my-http-reverse-proxy/internal/cache"
 	"github.com/Neffi42/my-http-reverse-proxy/internal/revproxy"
 )
 
@@ -13,11 +16,21 @@ func main() {
 	upstream := flag.String("upstream", "http://127.0.0.1:9000", "address upstream is listening on")
 	flag.Parse()
 
-	rp, err := revproxy.New(*upstream)
+	logger := slog.Default()
+
+	rp, err := revproxy.New(*upstream, nil, logger)
 	if err != nil {
-		log.Fatal(err)
+		logger.Error("building reverse proxy", "err", err)
+		os.Exit(1)
 	}
 
-	log.Printf("proxy on %s -> %s\n", *listen, *upstream)
-	log.Fatal(http.ListenAndServe(*listen, rp))
+	cacheStore := cache.NewStore()
+	cacheMiddleware := cache.New(rp, cacheStore, 5*time.Second, logger)
+
+	logger.Info("proxy listening", "addr", *listen, "upstream", *upstream)
+
+	if err := http.ListenAndServe(*listen, cacheMiddleware); err != nil {
+		logger.Error("server stopped", "err", err)
+		os.Exit(1)
+	}
 }

@@ -14,6 +14,14 @@ type Entry struct {
 	ExpiresAt  time.Time
 }
 
+func (e *Entry) Fresh(now time.Time) bool {
+	return now.Before(e.ExpiresAt)
+}
+
+func (e *Entry) Age(now time.Time) time.Duration {
+	return now.Sub(e.StoredAt)
+}
+
 type Store struct {
 	mu      sync.RWMutex
 	entries map[string]*Entry
