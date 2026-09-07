@@ -20,6 +20,20 @@ func hello(port uint) http.HandlerFunc {
 	}
 }
 
+func testCacheControl(directive string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", directive)
+		fmt.Fprintf(w, "testing Cache-Control directive: %s\n", directive)
+	}
+}
+
+func testHeader(header string, value string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set(header, value)
+		fmt.Fprintf(w, "testing Header: %s\n", header)
+	}
+}
+
 func (c *Counter) counter(w http.ResponseWriter, req *http.Request) {
 	c.mu.Lock()
 	c.count++
@@ -52,6 +66,10 @@ func main() {
 		mux.HandleFunc("/hello", hello(port))
 		mux.HandleFunc("/headers", headers)
 		mux.HandleFunc("/counter", c.counter)
+		mux.HandleFunc("/no-store", testCacheControl("no-store"))
+		mux.HandleFunc("/private", testCacheControl("private"))
+		mux.HandleFunc("/vary", testHeader("Vary", "Accept-Encoding"))
+		mux.HandleFunc("/set-cookie", testHeader("Set-Cookie", "session=12345; Path=/"))
 
 		wg.Go(func() {
 			log.Printf("listening on %s", addr)
