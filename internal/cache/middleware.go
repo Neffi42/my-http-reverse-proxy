@@ -60,6 +60,7 @@ func New(next http.Handler, store *Store, ttl time.Duration, logger *slog.Logger
 func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	cc := parseCacheControl(r.Header.Get("Cache-Control"))
 	if r.Method != http.MethodGet || cc.NoStore || r.Header.Get("Cookie") != "" {
+		m.logger.Info("cache bypass (client constraint)", "method", r.Method, "path", r.URL.Path)
 		w.Header().Set("X-Cache", "BYPASS")
 		m.next.ServeHTTP(w, r)
 		return
@@ -69,10 +70,12 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
 	if e, ok := m.store.Get(k); ok && e.Fresh(now) {
+		m.logger.Info("cache hit", "path", r.URL.Path)
 		m.writeEntry(w, r, e, now)
 		return
 	}
 
+	m.logger.Info("cache miss (forwarding)", "path", r.URL.Path)
 	rec := newRecorder(w)
 	w.Header().Set("X-Cache", "MISS")
 	m.next.ServeHTTP(rec, r)
@@ -80,9 +83,11 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if rec.status == http.StatusOK {
 		cc := parseCacheControl(rec.Header().Get("Cache-Control"))
 		if cc.Private || cc.NoStore || rec.Header().Get("Set-Cookie") != "" || rec.Header().Get("Vary") != "" {
+			m.logger.Info("cache bypass (server constraint)", "path", r.URL.Path, "status", rec.status)
 			return
 		}
 
+		m.logger.Info("cache store", "path", r.URL.Path, "ttl", m.ttl)
 		hdr := rec.Header().Clone()
 		hdr.Del("X-Cache")
 		m.store.Set(k, &Entry{
