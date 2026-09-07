@@ -1,0 +1,8 @@
+{
+  "listen": ":8000",
+  "routes": {
+    "/": "http://localhost:9000",
+    "/api/": "http://localhost:9001",
+    "/private/": "http://localhost:9002"
+  }
+}
