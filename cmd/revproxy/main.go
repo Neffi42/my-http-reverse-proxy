@@ -49,6 +49,10 @@ func main() {
 		strippedPreffix := http.StripPrefix(strings.TrimSuffix(r.Prefix, "/"), rp)
 		cacheMiddleware := cache.New(strippedPreffix, store, ttl, logger)
 		mux.Handle(r.Prefix, cacheMiddleware)
+		barePrefix := strings.TrimSuffix(r.Prefix, "/")
+		if barePrefix != "" {
+			mux.Handle(barePrefix, cacheMiddleware)
+		}
 	}
 
 	logger.Info("revproxy ready and listening", "addr", config.Listen)
