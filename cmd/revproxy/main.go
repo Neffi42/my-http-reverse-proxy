@@ -24,6 +24,7 @@ func main() {
 
 	logger := slog.Default()
 
+	logger.Info("loading config", "config", *configPath)
 	config, err := config.New(*configPath)
 	if err != nil {
 		logger.Error("loading config", "err", err)
@@ -31,9 +32,10 @@ func main() {
 	}
 
 	store := cache.NewStore()
-
 	mux := http.NewServeMux()
+
 	for prefix, upstream := range config.Routes {
+		logger.Info("building route", "prefix", prefix, "upstream", upstream)
 		rp, err := revproxy.New(upstream, nil, logger)
 		if err != nil {
 			logger.Error("building reverse proxy", "prefix", prefix, "err", err)
@@ -44,7 +46,7 @@ func main() {
 		mux.Handle(prefix, cacheMiddleware)
 	}
 
-	logger.Info("revproxy listening", "addr", config.Listen)
+	logger.Info("revproxy ready and listening", "addr", config.Listen)
 	if err := http.ListenAndServe(config.Listen, mux); err != nil {
 		logger.Error("server stopped", "err", err)
 		os.Exit(1)

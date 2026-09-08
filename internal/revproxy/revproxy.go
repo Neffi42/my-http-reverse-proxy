@@ -51,6 +51,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := rp.transport.RoundTrip(outReq)
 	if err != nil {
+		rp.logger.Error("upstream unavailable", "err", err, "path", r.URL.Path, "upstream", rp.upstream.Host)
 		http.Error(w, "upstream unavailable", http.StatusBadGateway)
 		return
 	}
@@ -59,6 +60,8 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	copyHeader(w.Header(), resp.Header)
 	deleteHopByHopHeaders(w.Header())
 	w.WriteHeader(resp.StatusCode)
+
+	rp.logger.Info("proxied request", "path", r.URL.Path, "upstream", rp.upstream.Host, "status", resp.StatusCode)
 
 	bytes, err := io.Copy(w, resp.Body)
 	if err != nil {
