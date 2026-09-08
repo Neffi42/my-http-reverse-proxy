@@ -68,11 +68,14 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	k := key(r)
 	now := time.Now()
-
-	if e, ok := m.store.Get(k); ok && e.Fresh(now) {
-		m.logger.Info("cache hit", "path", r.URL.Path)
-		m.writeEntry(w, r, e, now)
-		return
+	e, ok := m.store.Get(k)
+	if ok {
+		if e.Fresh(now) {
+			m.logger.Info("cache hit", "path", r.URL.Path)
+			m.writeEntry(w, r, e, now)
+			return
+		}
+		m.store.Delete(k)
 	}
 
 	m.logger.Info("cache miss (forwarding)", "path", r.URL.Path)
