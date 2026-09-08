@@ -34,16 +34,21 @@ func main() {
 	store := cache.NewStore()
 	mux := http.NewServeMux()
 
-	for prefix, upstream := range config.Routes {
-		logger.Info("building route", "prefix", prefix, "upstream", upstream)
-		rp, err := revproxy.New(upstream, nil, logger)
+	for _, r := range config.Routes {
+		logger.Info("building route", "prefix", r.Prefix, "upstream", r.Upstream)
+		rp, err := revproxy.New(r.Upstream, nil, logger)
 		if err != nil {
-			logger.Error("building reverse proxy", "prefix", prefix, "err", err)
+			logger.Error("building reverse proxy", "prefix", r.Prefix, "err", err)
 			os.Exit(1)
 		}
-		strippedPreffix := http.StripPrefix(strings.TrimSuffix(prefix, "/"), rp)
-		cacheMiddleware := cache.New(strippedPreffix, store, 5*time.Second, logger)
-		mux.Handle(prefix, cacheMiddleware)
+		ttl, err := time.ParseDuration(r.Ttl)
+		if err != nil {
+			logger.Error("parsing route ttl", "prefix", r.Prefix, "ttl", r.Ttl, "err", err)
+			os.Exit(1)
+		}
+		strippedPreffix := http.StripPrefix(strings.TrimSuffix(r.Prefix, "/"), rp)
+		cacheMiddleware := cache.New(strippedPreffix, store, ttl, logger)
+		mux.Handle(r.Prefix, cacheMiddleware)
 	}
 
 	logger.Info("revproxy ready and listening", "addr", config.Listen)

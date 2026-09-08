@@ -1,8 +1,20 @@
 {
   "listen": ":8000",
-  "routes": {
-    "/": "http://localhost:9000",
-    "/api/": "http://localhost:9001",
-    "/private/": "http://localhost:9002"
-  }
+  "routes": [
+    {
+      "prefix": "/",
+      "upstream": "http://localhost:9000",
+      "ttl": "5s"
+    },
+    {
+      "prefix": "/api/",
+      "upstream": "http://localhost:9001",
+      "ttl": "10s"
+    },
+    {
+      "prefix": "/private/",
+      "upstream": "http://localhost:9002",
+      "ttl": "1m"
+    }
+  ]
 }

@@ -6,9 +6,15 @@ import (
 	"os"
 )
 
+type Route struct {
+	Prefix   string `json:"prefix"`
+	Upstream string `json:"upstream"`
+	Ttl      string `json:"ttl"`
+}
+
 type Config struct {
-	Listen string            `json:"listen"`
-	Routes map[string]string `json:"routes"`
+	Listen string  `json:"listen"`
+	Routes []Route `json:"routes"`
 }
 
 func New(path string) (*Config, error) {

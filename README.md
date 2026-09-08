@@ -15,7 +15,7 @@ I took reference from:
 
 - Routes requests to different upstream backends by URL path prefix (e.g. `/api/` -> one backend, `/private/` -> another, `/` -> default).
 - Forwards `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` and strips hop-by-hop headers in and out.
-- Caches GET responses in memory for a fixed TTL, adding an `X-Cache` header (`MISS` / `HIT` / `BYPASS`) and an `Age` header on hits.
+- Caches GET responses in memory for a per-route TTL, adding an `X-Cache` header (`MISS` / `HIT` / `BYPASS`) and an `Age` header on hits.
 - Safely bypasses the cache for sensitive or negotiated data (respects `Cache-Control: private/no-store`, client `Cookie`, and server `Set-Cookie`/`Vary` headers).
 
 ## Project Structure
@@ -43,16 +43,28 @@ A JSON config file is required to be passed via the `-config` flag.
 ```json
 {
   "listen": ":8000",
-  "routes": {
-    "/": "http://localhost:9000",
-    "/api/": "http://localhost:9001",
-    "/private/": "http://localhost:9002"
-  }
+  "routes": [
+    {
+      "prefix": "/",
+      "upstream": "http://localhost:9000",
+      "ttl": "5s"
+    },
+    {
+      "prefix": "/api/",
+      "upstream": "http://localhost:9001",
+      "ttl": "10s"
+    },
+    {
+      "prefix": "/private/",
+      "upstream": "http://localhost:9002",
+      "ttl": "1m"
+    }
+  ]
 }
 ```
 
 `listen` is an address for `http.ListenAndServe`.
-`routes` maps a path prefix to the upstream base URL.
+`routes` is a list of prefix/upstream/ttl entries. `prefix` needs a trailing slash to subtree-match (see `net/http.ServeMux` rules), `upstream` is the backend base URL, and `ttl` (parsed with `time.ParseDuration`) is that route's cache TTL.
 
 You can use [config.example.json](./config.example.json) to test it out with `fakeupstream`.
 The config matches `fakeupstream` default options.
@@ -83,13 +95,13 @@ curl -i http://localhost:8000/api/counter
 # count is: 1
 ```
 
-If you repeat that request within the TTL (which defaults to 5s), it will be served directly from the cache. You won't hit the upstream, and you can see the `Age` header gets added:
+If you repeat that request within the TTL (10s for `/api/` in the example config), it will be served directly from the cache. You won't hit the upstream, and you can see the `Age` header gets added:
 
 ```sh
 curl -i http://localhost:8000/api/counter
 # HTTP/1.1 200 OK
 # X-Cache: HIT
-# Age: 0
+# Age: 1
 # ...
 # count is: 1
 ```
@@ -97,12 +109,12 @@ curl -i http://localhost:8000/api/counter
 Try hitting a different route prefix to reach a different upstream counter. This proves that the routes don't collide in the shared cache:
 
 ```sh
-curl -i http://localhost:8000/private/counter
+curl -i http://localhost:8000/counter
 # X-Cache: MISS
 # count is: 1
 ```
 
-Finally, if you wait past the 5-second TTL and make the original request again, you'll see an X-Cache: MISS and the count will increment.
+Finally, if you wait past the 10-second TTL and make the original request again, you'll see an X-Cache: MISS and the count will increment.
 
 ## Known limitations
 
@@ -111,5 +123,5 @@ Since this is just a practice project, I left a few things out:
 - **It ignores `Cache-Control` TTL directives (`max-age`/`s-maxage`), relying entirely on the fixed TTL.**
 - The Store never actually evicts expired entries, so it will have unbounded memory growth over a long uptime.
 - I used http.ListenAndServe directly, which means there are no timeouts or graceful shutdowns configured.
-- It only caches GET requests, there is no cap on the cache size, and the TTL is fixed per process rather than per-route.
+- It only caches GET requests, and there is no cap on the cache size.
 - I left a TODO in the proxy code to properly preserve escaped slashes (`%2F`) by joining `EscapedPath()` too.
