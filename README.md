@@ -13,7 +13,7 @@ I took reference from:
 
 ## Features
 
-- Routes requests to different upstream backends by URL path prefix (e.g. `/api/` -> one backend, `/private/` -> another, `/` -> default).
+- Routes requests to different upstream backends by URL path prefix (e.g. `/api/` -> one backend, `/test/` -> another, `/` -> default).
 - Forwards `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` and strips hop-by-hop headers in and out.
 - Caches GET responses in memory for a per-route TTL, adding an `X-Cache` header (`MISS` / `HIT` / `BYPASS`) and an `Age` header on hits.
 - Safely bypasses the cache for sensitive or negotiated data (respects `Cache-Control: private/no-store`, client `Cookie`, and server `Set-Cookie`/`Vary` headers).
@@ -55,7 +55,7 @@ A JSON config file is required to be passed via the `-config` flag.
       "ttl": "10s"
     },
     {
-      "prefix": "/private/",
+      "prefix": "/test/",
       "upstream": "http://localhost:9002",
       "ttl": "1m"
     }

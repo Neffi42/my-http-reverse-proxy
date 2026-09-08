@@ -12,7 +12,7 @@
       "ttl": "10s"
     },
     {
-      "prefix": "/private/",
+      "prefix": "/test/",
       "upstream": "http://localhost:9002",
       "ttl": "1m"
     }
