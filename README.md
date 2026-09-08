@@ -124,4 +124,3 @@ Since this is just a practice project, I left a few things out:
 - The Store only evicts an expired entry lazily, on the next request for that same key. Keys that go cold after expiring just sit there, so it can still grow unbounded over a long uptime.
 - I used http.ListenAndServe directly, which means there are no timeouts or graceful shutdowns configured.
 - It only caches GET requests, and there is no cap on the cache size.
-- I left a TODO in the proxy code to properly preserve escaped slashes (`%2F`) by joining `EscapedPath()` too.

@@ -43,8 +43,7 @@ func (rp *RevProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	outReq.Host = rp.upstream.Host
 	outReq.URL.Scheme = rp.upstream.Scheme
 	outReq.URL.Host = rp.upstream.Host
-	outReq.URL.Path = joinPaths(rp.upstream.Path, r.URL.Path)
-	outReq.URL.RawPath = "" // TODO: preserve %2F by joining EscapedPath() too.
+	outReq.URL.Path, outReq.URL.RawPath = joinURLPaths(rp.upstream, r.URL)
 
 	deleteHopByHopHeaders(outReq.Header)
 	setForwardedHeaders(r, outReq)
@@ -142,4 +141,12 @@ func joinPaths(base, req string) string {
 		return strings.TrimSuffix(base, "/") + "/"
 	}
 	return strings.TrimSuffix(base, "/") + "/" + strings.TrimPrefix(req, "/")
+}
+
+func joinURLPaths(base, req *url.URL) (path, rawPath string) {
+	path = joinPaths(base.Path, req.Path)
+	if base.RawPath == "" && req.RawPath == "" {
+		return path, ""
+	}
+	return path, joinPaths(base.EscapedPath(), req.EscapedPath())
 }
