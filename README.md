@@ -34,7 +34,7 @@ internal/
 
 I built this with Go _1.27.1_.
 I use [mise](https://mise.jdx.dev/) to manage Go's version.
-Check it out if you are intersted, it's pretty cool.
+Check it out if you are interested, it's pretty cool.
 
 `fakeupstream` will probably break if you use a version older than _1.25_ since I use the `sync.WaitGroup.Go()` function.
 
